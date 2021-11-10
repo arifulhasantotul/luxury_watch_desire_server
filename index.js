@@ -1,8 +1,10 @@
 const express = require("express");
 const { MongoClient } = require("mongodb");
-const app = express();
 const cors = require("cors");
 require("dotenv").config();
+const ObjectId = require("mongodb").ObjectId;
+
+const app = express();
 const port = process.env.PORT || 8080;
 
 // middleware
@@ -23,12 +25,28 @@ async function run() {
 
       const database = client.db("desire_watches");
       const productCollection = database.collection("products");
+      const reviewCollection = database.collection("reviews");
 
       // GET products
       app.get("/products", async (req, res) => {
          const cursor = productCollection.find({});
          const products = await cursor.toArray();
          res.send(products);
+      });
+
+      // GET specific product
+      app.get("/products/:id", async (req, res) => {
+         const id = req.params.id;
+         const query = { _id: ObjectId(id) };
+         const product = await productCollection.findOne(query);
+         res.json(product);
+      });
+
+      // GET reviews
+      app.get("/reviews", async (req, res) => {
+         const cursor = reviewCollection.find({});
+         const reviews = await cursor.toArray();
+         res.send(reviews);
       });
    } finally {
       // await client.close();
