@@ -20,6 +20,16 @@ async function run() {
    try {
       await client.connect();
       console.log("connected to db");
+
+      const database = client.db("desire_watches");
+      const productCollection = database.collection("products");
+
+      // GET products
+      app.get("/products", async (req, res) => {
+         const cursor = productCollection.find({});
+         const products = await cursor.toArray();
+         res.send(products);
+      });
    } finally {
       // await client.close();
    }
