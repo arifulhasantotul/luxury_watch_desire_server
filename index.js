@@ -12,7 +12,7 @@ app.use(cors());
 app.use(express.json());
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.nebgy.mongodb.net/myFirstDatabase?retryWrites=true&w=majority`;
-console.log(uri);
+// console.log(uri);
 const client = new MongoClient(uri, {
    useNewUrlParser: true,
    useUnifiedTopology: true,
@@ -26,6 +26,7 @@ async function run() {
       const database = client.db("desire_watches");
       const productCollection = database.collection("products");
       const reviewCollection = database.collection("reviews");
+      const userCollection = database.collection("users");
 
       // GET products
       app.get("/products", async (req, res) => {
@@ -47,6 +48,35 @@ async function run() {
          const cursor = reviewCollection.find({});
          const reviews = await cursor.toArray();
          res.send(reviews);
+      });
+
+      // GET users
+      app.get("/users", async (req, res) => {
+         const cursor = userCollection.find({});
+         const users = await cursor.toArray();
+         res.send(users);
+      });
+
+      // POST user from email
+      app.post("/users", async (req, res) => {
+         const user = req.body;
+         const result = await userCollection.insertOne(user);
+         res.json(result);
+      });
+
+      // PUT users from google because if user is login for first time user data will be post. otherwise user data won't be post
+      app.put("/users", async (req, res) => {
+         const user = req.body;
+         const filter = { email: user.email };
+         const options = { upsert: true };
+         const updateDoc = { $set: user };
+         const result = await userCollection.updateOne(
+            filter,
+            updateDoc,
+            options
+         );
+         res.json(result);
+         console.log(result);
       });
    } finally {
       // await client.close();
