@@ -28,10 +28,16 @@ async function run() {
       const reviewCollection = database.collection("reviews");
       const userCollection = database.collection("users");
 
-      // GET products
+      // GET products for products page
       app.get("/products", async (req, res) => {
          const cursor = productCollection.find({});
-         const products = await cursor.toArray();
+         const size = parseInt(req.query.size);
+         let products;
+         if (size) {
+            products = await cursor.limit(size).toArray();
+         } else {
+            products = await cursor.toArray();
+         }
          res.send(products);
       });
 
@@ -57,14 +63,14 @@ async function run() {
          res.send(users);
       });
 
-      // POST user from email
+      // POST user from create email
       app.post("/users", async (req, res) => {
          const user = req.body;
          const result = await userCollection.insertOne(user);
          res.json(result);
       });
 
-      // PUT users from google because if user is login for first time user data will be post. otherwise user data won't be post
+      // PUT users from google. if user is going to login for the first time user data will be post. otherwise user data won't be post
       app.put("/users", async (req, res) => {
          const user = req.body;
          const filter = { email: user.email };
