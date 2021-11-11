@@ -28,6 +28,7 @@ async function run() {
       const reviewCollection = database.collection("reviews");
       const userCollection = database.collection("users");
       const orderCollection = database.collection("orders");
+      const shippingCollection = database.collection("shipping");
 
       // GET products for products page
       app.get("/products", async (req, res) => {
@@ -104,15 +105,14 @@ async function run() {
       // GET orders for products page
       app.get("/orders", async (req, res) => {
          const email = req.query.email;
-         let orders;
+         let cursor;
          if (email) {
             const query = { email: email };
-            const cursor = orderCollection.find(query);
-            orders = await cursor.toArray();
+            cursor = orderCollection.find(query);
          } else {
-            const cursor = orderCollection.find({});
-            orders = await cursor.toArray();
+            cursor = orderCollection.find({});
          }
+         const orders = await cursor.toArray();
          res.send(orders);
       });
 
@@ -120,6 +120,36 @@ async function run() {
       app.post("/orders", async (req, res) => {
          const newOrders = req.body;
          const result = await orderCollection.insertOne(newOrders);
+         res.json(result);
+      });
+
+      // DELETE orders
+      app.delete("/orders/:id", async (req, res) => {
+         const id = req.params.id;
+         const query = { _id: ObjectId(id) };
+         const result = await orderCollection.deleteOne(query);
+         console.log("deleted", result);
+         res.json(result);
+      });
+
+      // GET shipping
+      app.get("/shipping", async (req, res) => {
+         const email = req.query.email;
+         let cursor;
+         if (email) {
+            const filter = { email: email };
+            cursor = shippingCollection.find(filter);
+         } else {
+            cursor = shippingCollection.find({});
+         }
+         const result = await cursor.toArray();
+         res.send(result);
+      });
+
+      // POST shipping
+      app.post("/shipping", async (req, res) => {
+         const newShipping = req.body;
+         const result = await shippingCollection.insertOne(newShipping);
          res.json(result);
       });
    } finally {
