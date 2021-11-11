@@ -50,11 +50,26 @@ async function run() {
          res.json(product);
       });
 
+      // POST products
+      app.post("/products", async (req, res) => {
+         const newProduct = req.body;
+         const result = await productCollection.insertOne(newProduct);
+         res.json(result);
+      });
+
       // GET reviews
       app.get("/reviews", async (req, res) => {
          const cursor = reviewCollection.find({});
          const reviews = await cursor.toArray();
          res.send(reviews);
+      });
+
+      // POST reviews
+      app.post("/reviews", async (req, res) => {
+         const newReview = req.body;
+         console.log(newReview);
+         const result = await reviewCollection.insertOne(newReview);
+         res.json(result);
       });
 
       // GET users
