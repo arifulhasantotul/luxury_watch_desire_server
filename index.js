@@ -3,6 +3,7 @@ const { MongoClient } = require("mongodb");
 const cors = require("cors");
 require("dotenv").config();
 const ObjectId = require("mongodb").ObjectId;
+const e = require("express");
 
 const app = express();
 const port = process.env.PORT || 8080;
@@ -80,6 +81,18 @@ async function run() {
          res.send(users);
       });
 
+      // GET specific user email for role
+      app.get("/users/:email", async (req, res) => {
+         const email = req.params.email;
+         const query = { email: email };
+         const user = await userCollection.findOne(query);
+         let isAdmin = false;
+         if (user?.role === "admin") {
+            isAdmin = true;
+         }
+         res.json({ admin: isAdmin });
+      });
+
       // POST user from create email
       app.post("/users", async (req, res) => {
          const user = req.body;
@@ -100,6 +113,16 @@ async function run() {
          );
          res.json(result);
          console.log(result);
+      });
+
+      // PUT update normal user to admin
+      app.put("/users/admin", async (req, res) => {
+         const user = req.body;
+         console.log("put", user);
+         const filter = { email: user.email };
+         const updateDoc = { $set: { role: "admin" } };
+         const result = await userCollection.updateOne(filter, updateDoc);
+         res.json(result);
       });
 
       // GET orders for products page
