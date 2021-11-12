@@ -3,10 +3,16 @@ const { MongoClient } = require("mongodb");
 const cors = require("cors");
 require("dotenv").config();
 const ObjectId = require("mongodb").ObjectId;
-const e = require("express");
+const admin = require("firebase-admin");
 
 const app = express();
 const port = process.env.PORT || 8080;
+
+const serviceAccount = require("./desired_a1f73_admin_SDK.json");
+
+admin.initializeApp({
+   credential: admin.credential.cert(serviceAccount),
+});
 
 // middleware
 app.use(cors());
@@ -18,6 +24,18 @@ const client = new MongoClient(uri, {
    useNewUrlParser: true,
    useUnifiedTopology: true,
 });
+
+async function verifyToken(req, res, next) {
+   if (req.headers?.authorization?.startsWith("Bearer ")) {
+      const token = req.headers.authorization.split(" ")[1];
+      try {
+         const decodedUser = await admin.auth().verifyIdToken(token);
+         req.decodedEmail = decodedUser.email;
+      } catch {}
+   }
+
+   next();
+}
 
 async function run() {
    try {
@@ -116,13 +134,26 @@ async function run() {
       });
 
       // PUT update normal user to admin
-      app.put("/users/admin", async (req, res) => {
+      app.put("/users/admin", verifyToken, async (req, res) => {
          const user = req.body;
-         console.log("put", user);
-         const filter = { email: user.email };
-         const updateDoc = { $set: { role: "admin" } };
-         const result = await userCollection.updateOne(filter, updateDoc);
-         res.json(result);
+         // getting already authorized admin email
+         // console.log("put", req.decodedEmail);
+         const requester = req.decodedEmail;
+         if (requester) {
+            const requesterAccount = await userCollection.findOne({
+               email: requester,
+            });
+            if (requesterAccount.role === "admin") {
+               const filter = { email: user.email };
+               const updateDoc = { $set: { role: "admin" } };
+               const result = await userCollection.updateOne(filter, updateDoc);
+               res.json(result);
+            }
+         } else {
+            res.status(403).json({
+               message: "You do not have access to make admin",
+            });
+         }
       });
 
       // GET orders for products page
@@ -152,6 +183,23 @@ async function run() {
          const query = { _id: ObjectId(id) };
          const result = await orderCollection.deleteOne(query);
          console.log("deleted", result);
+         res.json(result);
+      });
+
+      // PUT orders
+      app.put("/orders/:id", async (req, res) => {
+         const id = req.params.id;
+         const updateOrder = req.body;
+         const filter = { _id: ObjectId(id) };
+         const options = { upsert: true };
+         const updateDoc = {
+            $set: { status: updateOrder.status },
+         };
+         const result = await orderCollection.updateOne(
+            filter,
+            updateDoc,
+            options
+         );
          res.json(result);
       });
 
