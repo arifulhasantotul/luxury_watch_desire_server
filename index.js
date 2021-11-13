@@ -3,16 +3,19 @@ const { MongoClient } = require("mongodb");
 const cors = require("cors");
 require("dotenv").config();
 const ObjectId = require("mongodb").ObjectId;
-const admin = require("firebase-admin");
-
+// const admin = require("firebase-admin");
 const app = express();
 const port = process.env.PORT || 8080;
 
-const serviceAccount = require("./desired_a1f73_admin_SDK.json");
+// DB_USER=assignment12
+// DB_PASS=9YQhbUa6naq419M4
+// const serviceAccount = JSON.parse(`${process.env.FIREBASE_CREATE_ACCOUNT}`);
+// const serviceAccount = require("./desired-a1f73-firebase-adminsdk-cx6kp-b5d44e7d54.json");
+// console.log(serviceAccount);
 
-admin.initializeApp({
-   credential: admin.credential.cert(serviceAccount),
-});
+// admin.initializeApp({
+//    credential: admin.credential.cert(serviceAccount),
+// });
 
 // middleware
 app.use(cors());
@@ -25,17 +28,17 @@ const client = new MongoClient(uri, {
    useUnifiedTopology: true,
 });
 
-async function verifyToken(req, res, next) {
-   if (req.headers?.authorization?.startsWith("Bearer ")) {
-      const token = req.headers.authorization.split(" ")[1];
-      try {
-         const decodedUser = await admin.auth().verifyIdToken(token);
-         req.decodedEmail = decodedUser.email;
-      } catch {}
-   }
+// async function verifyToken(req, res, next) {
+//    if (req.headers?.authorization?.startsWith("Bearer ")) {
+//       const token = req.headers.authorization.split(" ")[1];
+//       try {
+//          const decodedUser = await admin.auth().verifyIdToken(token);
+//          req.decodedEmail = decodedUser.email;
+//       } catch {}
+//    }
 
-   next();
-}
+//    next();
+// }
 
 async function run() {
    try {
@@ -74,6 +77,32 @@ async function run() {
       app.post("/products", async (req, res) => {
          const newProduct = req.body;
          const result = await productCollection.insertOne(newProduct);
+         res.json(result);
+      });
+
+      // DELETE products
+      app.delete("/products/:id", async (req, res) => {
+         const id = req.params.id;
+         const query = { _id: ObjectId(id) };
+         const result = await productCollection.deleteOne(query);
+         console.log("deleted", result);
+         res.json(result);
+      });
+
+      // PUT orders
+      app.put("/products/:id", async (req, res) => {
+         const id = req.params.id;
+         const updateOrder = req.body;
+         const filter = { _id: ObjectId(id) };
+         const options = { upsert: true };
+         const updateDoc = {
+            $set: { status: updateOrder.status },
+         };
+         const result = await productCollection.updateOne(
+            filter,
+            updateDoc,
+            options
+         );
          res.json(result);
       });
 
@@ -132,28 +161,54 @@ async function run() {
          res.json(result);
          console.log(result);
       });
+      // PUT make user without jwt
+      app.put("/users/admin", async (req, res) => {
+         const user = req.body;
+         console.log("put", user);
+         const filter = { email: user.email };
+         const updateDoc = { $set: { role: "admin" } };
+         const result = await userCollection.updateOne(filter, updateDoc);
+         res.json(result);
+      });
 
       // PUT update normal user to admin
-      app.put("/users/admin", verifyToken, async (req, res) => {
-         const user = req.body;
-         // getting already authorized admin email
-         // console.log("put", req.decodedEmail);
-         const requester = req.decodedEmail;
-         if (requester) {
-            const requesterAccount = await userCollection.findOne({
-               email: requester,
-            });
-            if (requesterAccount.role === "admin") {
-               const filter = { email: user.email };
-               const updateDoc = { $set: { role: "admin" } };
-               const result = await userCollection.updateOne(filter, updateDoc);
-               res.json(result);
-            }
-         } else {
-            res.status(403).json({
-               message: "You do not have access to make admin",
-            });
-         }
+      // app.put("/users/admin", verifyToken, async (req, res) => {
+      //    const user = req.body;
+      //    // getting already authorized admin email
+      //    // console.log("put", req.decodedEmail);
+      //    const requester = req.decodedEmail;
+      //    if (requester) {
+      //       const requesterAccount = await userCollection.findOne({
+      //          email: requester,
+      //       });
+      //       if (requesterAccount.role === "admin") {
+      //          const filter = { email: user.email };
+      //          const updateDoc = { $set: { role: "admin" } };
+      //          const result = await userCollection.updateOne(filter, updateDoc);
+      //          res.json(result);
+      //       }
+      //    } else {
+      //       res.status(403).json({
+      //          message: "You do not have access to make admin",
+      //       });
+      //    }
+      // });
+
+      // PUT users for moderator
+      app.put("/users/:id", async (req, res) => {
+         const id = req.params.id;
+         const updateOrder = req.body;
+         const filter = { _id: ObjectId(id) };
+         const options = { upsert: true };
+         const updateDoc = {
+            $set: { role: updateOrder.role },
+         };
+         const result = await userCollection.updateOne(
+            filter,
+            updateDoc,
+            options
+         );
+         res.json(result);
       });
 
       // GET orders for products page
